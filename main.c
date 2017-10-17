@@ -1,6 +1,38 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <termio.h>
+#include <stdlib.h>
+
+struct termios orig_termios;
+
+void disableRawMode() {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
+void enableRawMode() {
+    tcgetattr(STDIN_FILENO, &orig_termios);
+
+    //  Ensure we’ll leave the terminal attributes
+    //  the way we found them when our program exits
+    atexit(disableRawMode);
+
+    struct termios raw = orig_termios;
+
+    // Map bits to disable echo and canonical mode
+    // turns off echoing in command line, and read byte by byte
+
+    raw.c_lflag &= ~(ECHO | ICANON);
+
+    //  The TCSAFLUSH argument specifies when to apply the change:
+    //  in this case, it waits for all pending output to be written to the terminal,
+    //  and also discards any input that hasn’t been read.
+
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+}
 
 int main() {
-    printf("Hello, World!\n");
+    enableRawMode();
+    char c;
+    while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q');
     return 0;
 }
